@@ -17,14 +17,14 @@ import models.TuningParameterConstraint;
 
 /**
  * Exeuction Engine is the interface of different execution engines. Currently it have two implementations
- * MRExecutionEngine : Handle parameters releated to Map Reduce.
- * SparkExecutionEngine : Handle parameters releated to Spark
+ * MRExecutionEngine : Handle parameters related to Map Reduce.
+ * SparkExecutionEngine : Handle parameters related to Spark
  */
 
 public interface ExecutionEngine {
 
   /**
-   * This method is used to compute the values of derived parameters . These parameter values have not suggested by tuning algorithm
+   * This method is used to compute the values of derived parameters . These parameter values have not been suggested by tuning algorithm
    *
    * @param derivedParameterList Derived Parameter List
    * @param jobSuggestedParamValue Update job suggested param value with the derived parameter value list.
@@ -72,7 +72,7 @@ public interface ExecutionEngine {
    * @param tuningParameters : Tuning parameters
    * @return : Suggest parameters new values.
    */
-  public String parameterGenerationsHBT(List<AppResult> results, List<TuningParameter> tuningParameters);
+  String parameterGenerationsHBT(List<AppResult> results, List<TuningParameter> tuningParameters);
 
   /**
    * Check if the suggested parameter violets any constraint.

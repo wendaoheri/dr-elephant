@@ -19,6 +19,8 @@ package com.linkedin.drelephant.tuning;
 import com.avaje.ebean.Expr;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linkedin.drelephant.ElephantContext;
+import com.linkedin.drelephant.tuning.Constant.AlgotihmType;
+import com.linkedin.drelephant.tuning.Constant.TuningType;
 import com.linkedin.drelephant.tuning.obt.OptimizationAlgoFactory;
 import com.linkedin.drelephant.tuning.obt.ParameterGenerateManagerOBT;
 import com.linkedin.drelephant.util.Utils;
@@ -37,8 +39,10 @@ import models.JobExecution;
 import models.JobExecution.ExecutionState;
 import models.JobSuggestedParamSet;
 import models.JobSuggestedParamSet.ParamSetStatus;
+import models.TuningAlgorithm.JobType;
 import models.JobSuggestedParamValue;
 import models.TuningAlgorithm;
+import models.TuningAlgorithm.OptimizationAlgo;
 import models.TuningJobDefinition;
 import models.TuningJobExecutionParamSet;
 import models.TuningParameter;
@@ -149,12 +153,18 @@ public class AutoTuningAPIHelper {
     TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.where()
         .eq(TuningJobDefinition.TABLE.job + '.' + JobDefinition.TABLE.id, jobDefinition.id)
         .findUnique();
-    Double averageResourceUsagePerGBInput =
-        tuningJobDefinition.averageResourceUsage * FileUtils.ONE_GB / tuningJobDefinition.averageInputSizeInBytes;
-    Double maxDesiredResourceUsagePerGBInput =
-        averageResourceUsagePerGBInput * tuningJobDefinition.allowedMaxResourceUsagePercent / 100.0;
 
-    jobSuggestedParamSet.fitness = penaltyConstant * maxDesiredResourceUsagePerGBInput;
+    if (tuningJobDefinition.tuningAlgorithm.optimizationAlgo == OptimizationAlgo.HBT) {
+      //For HBT we are using score as fitness. setting it to high value
+      jobSuggestedParamSet.fitness = 10000D;
+    } else {
+      Double averageResourceUsagePerGBInput =
+          tuningJobDefinition.averageResourceUsage * FileUtils.ONE_GB / tuningJobDefinition.averageInputSizeInBytes;
+      Double maxDesiredResourceUsagePerGBInput =
+          averageResourceUsagePerGBInput * tuningJobDefinition.allowedMaxResourceUsagePercent / 100.0;
+      jobSuggestedParamSet.fitness = penaltyConstant * maxDesiredResourceUsagePerGBInput;
+    }
+
     jobSuggestedParamSet.paramSetState = ParamSetStatus.FITNESS_COMPUTED;
     jobSuggestedParamSet.fitnessJobExecution = jobExecution;
     jobSuggestedParamSet.update();
@@ -595,7 +605,7 @@ public class AutoTuningAPIHelper {
         .eq(JobSuggestedParamSet.TABLE.paramSetState, ParamSetStatus.CREATED)
         .not(Expr.eq(JobSuggestedParamSet.TABLE.tuningAlgorithm, tuningAlgorithm))
         .findList();
-    if (jobSuggestedParamSets != null) {
+    if (jobSuggestedParamSets != null && jobSuggestedParamSets.size()>0) {
       logger.info(" other algorithm parameter created " + jobSuggestedParamSets.size());
       for (JobSuggestedParamSet jobSuggestedParamSet : jobSuggestedParamSets) {
         jobSuggestedParamSet.paramSetState = ParamSetStatus.DISCARDED;
