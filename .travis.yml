@@ -17,5 +17,5 @@ branches:
     - master
     
 env:
-  - PSO_DIR_PATH="/home/travis/build/linkedin/dr-elephant/scripts/pso/"
+  - PSO_DIR_PATH=$TRAVIS_BUILD_DIR/scripts/pso/"
 
