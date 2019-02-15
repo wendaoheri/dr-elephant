@@ -16,11 +16,14 @@
 
 package models;
 
+import com.avaje.ebean.annotation.Formula;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.google.common.collect.Maps;
 import com.linkedin.drelephant.analysis.Severity;
 
 import com.linkedin.drelephant.util.Utils;
-import java.util.Date;
+import java.util.Map;
+import javax.persistence.Transient;
 import play.db.ebean.Model;
 
 import java.util.List;
@@ -79,11 +82,26 @@ public class AppResult extends Model {
     public static final String RESOURCE_USAGE = "resourceUsed";
     public static final String WASTED_RESOURCES = "resourceWasted";
     public static final String TOTAL_DELAY = "totalDelay";
+    public static final String RUN_TIME = "runtime";
   }
 
   public static String getSearchFields() {
     return Utils.commaSeparated(AppResult.TABLE.NAME, AppResult.TABLE.USERNAME, TABLE.QUEUE_NAME, AppResult.TABLE.JOB_TYPE,
-        AppResult.TABLE.SEVERITY, AppResult.TABLE.FINISH_TIME);
+        AppResult.TABLE.SEVERITY, AppResult.TABLE.FINISH_TIME,TABLE.RUN_TIME);
+  }
+
+  private static Map<String,String> sortFields;
+
+  public static Map<String,String> getSortFields(){
+    if(sortFields == null){
+      sortFields = Maps.newHashMap();
+      sortFields.put(TABLE.TOTAL_DELAY,"TotalDelay");
+      sortFields.put(TABLE.START_TIME,"StartTime");
+      sortFields.put(TABLE.FINISH_TIME,"FinishTime");
+      sortFields.put(TABLE.RUN_TIME,"RunTime");
+      sortFields.put(TABLE.RESOURCE_USAGE,"ResourceUsed");
+    }
+    return sortFields;
   }
 
   @Id
@@ -158,6 +176,10 @@ public class AppResult extends Model {
 
   @Column(nullable = true)
   public long totalDelay;
+
+  @Transient
+  @Formula(select = "finish_time - start_time")
+  public long runtime;
 
   @JsonManagedReference
   @OneToMany(cascade = CascadeType.ALL, mappedBy = "yarnAppResult")

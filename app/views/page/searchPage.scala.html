@@ -105,6 +105,24 @@
           <input type="hidden" id="form-finished-time-end" name="finished-time-end" value="" />
         </div>
 
+        <!-- Application Sort -->
+        <div class="checkbox">
+          <label><input type="checkbox" id="form-sort-enable" name="sort-enable" value=""> Sort with</label>
+        </div>
+        <div class="form-group" style="padding-left:10px;">
+          <select class="form-control" id="form-sort" name="sort-field">
+          @for(sortField <- models.AppResult.getSortFields()) {
+            <option value="@sortField._1">@sortField._2</option>
+          }
+          </select>
+        </div>
+        <div class="form-group" style="padding-left:10px;">
+          <select class="form-control" id="form-sort-method" name="sort-method">
+            <option value="desc">DESC</option>
+            <option value="asc">ASC</option>
+          </select>
+        </div>
+
         <button type="submit" class="btn btn-default" id="submit-button">Get Result</button>
       </form>
     }

@@ -45,17 +45,18 @@ import java.util.TreeSet;
 import models.AppHeuristicResult;
 import models.AppResult;
 
+import models.AppResult.TABLE;
 import org.apache.commons.collections.map.ListOrderedMap;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
 
-import play.api.templates.Html;
 import play.data.DynamicForm;
 import play.data.Form;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
+import play.twirl.api.Html;
 import views.html.index;
 import views.html.help.metrics.helpRuntime;
 import views.html.help.metrics.helpWaittime;
@@ -110,6 +111,9 @@ public class Application extends Controller {
   public static final String COMPARE_FLOW_ID1 = "flow-exec-id1";
   public static final String COMPARE_FLOW_ID2 = "flow-exec-id2";
   public static final String PAGE = "page";
+  public static final String SORT_FIELD = "sort-field";
+  public static final String SORT_METHOD = "sort-method";
+
 
   private enum Version {OLD,NEW};
 
@@ -348,6 +352,8 @@ public class Application extends Controller {
     searchParams.put(FINISHED_TIME_END, form.get(FINISHED_TIME_END));
     searchParams.put(STARTED_TIME_BEGIN, form.get(STARTED_TIME_BEGIN));
     searchParams.put(STARTED_TIME_END, form.get(STARTED_TIME_END));
+    searchParams.put(SORT_FIELD, form.get(SORT_FIELD));
+    searchParams.put(SORT_METHOD, form.get(SORT_METHOD));
 
     return searchParams;
   }
@@ -421,6 +427,14 @@ public class Application extends Controller {
         query = query.le(AppResult.TABLE.FINISH_TIME, time);
       }
     }
+    // If sort filed set, sort with selected field
+    String sortField = searchParams.get(SORT_FIELD);
+    String sortMethod = searchParams.getOrDefault(SORT_METHOD,"DESC");
+
+    if (Utils.isSet(sortField)) {
+      query.order(sortField + " " + sortMethod);
+    }
+
 
     // If queried by start time then sort the results by start time.
     if (Utils.isSet(startedTimeBegin) || Utils.isSet(startedTimeEnd)) {
@@ -428,6 +442,7 @@ public class Application extends Controller {
     } else {
       return query.order().desc(AppResult.TABLE.FINISH_TIME);
     }
+
   }
 
   /**
