@@ -175,7 +175,7 @@ public class TezFetcher implements ElephantFetcher<TezApplicationData> {
 
     private URL getTaskListByVertexURL(String dagId, String vertexId) throws MalformedURLException {
       return new URL(_timelineWebAddr + "/TEZ_TASK_ID?primaryFilter=TEZ_DAG_ID:" + dagId +
-              "&secondaryFilter=TEZ_VERTEX_ID:" + vertexId + "&limit=500000");
+              "&secondaryFilter=TEZ_VERTEX_ID:" + vertexId + "&limit=10000");
     }
 
     private URL getTasksURL(String taskId) throws MalformedURLException {
