@@ -56,7 +56,7 @@ import play.data.Form;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
-import play.twirl.api.Html;
+import play.api.templates.Html;
 import views.html.index;
 import views.html.help.metrics.helpRuntime;
 import views.html.help.metrics.helpWaittime;
