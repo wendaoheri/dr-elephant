@@ -86,6 +86,8 @@ trait ExecutorSummary{
   def totalShuffleRead: Long
   def totalShuffleWrite: Long
   def maxMemory: Long
+  def addTime: Date
+  def removeTime: Date
   def totalGCTime: Long
   def executorLogs: Map[String, String]}
 
@@ -292,6 +294,8 @@ class ExecutorSummaryImpl(
   var totalShuffleRead: Long,
   var totalShuffleWrite: Long,
   var maxMemory: Long,
+  var addTime: Date,
+  var removeTime: Date,
   var totalGCTime: Long,
   var executorLogs: Map[String, String]) extends ExecutorSummary
 

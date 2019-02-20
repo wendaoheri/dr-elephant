@@ -16,6 +16,7 @@
 
 package com.linkedin.drelephant.spark.legacydata;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +34,8 @@ public class SparkExecutorData {
     public int rddBlocks = 0;
     public long memUsed = 0L;
     public long maxMem = 0L;
+    public Date addTime;
+    public Date removeTime;
     public long diskUsed = 0L;
 
     public int activeTasks = 0;

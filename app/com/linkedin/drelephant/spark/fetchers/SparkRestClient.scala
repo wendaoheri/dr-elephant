@@ -73,6 +73,8 @@ class SparkRestClient(sparkConf: SparkConf) {
       throw new IllegalArgumentException("spark.yarn.historyServer.address not provided; can't use Spark REST API")
   }
 
+  private val dynamicAllocationEnabled = sparkConf.getBoolean(DYNAMIC_ALLOCATION_ENABLED_KEY, false)
+
   private val apiTarget: WebTarget = client.property(ClientProperties.CONNECT_TIMEOUT, CONNECTION_TIMEOUT).property(ClientProperties.READ_TIMEOUT, READ_TIMEOUT).target(historyServerUri).path(API_V1_MOUNT_PATH)
 
   /**
@@ -268,7 +270,7 @@ class SparkRestClient(sparkConf: SparkConf) {
   }
 
   private def getExecutorSummaries(attemptTarget: WebTarget): Seq[ExecutorSummaryImpl] = {
-    val target = attemptTarget.path("executors")
+    val target = if(dynamicAllocationEnabled) attemptTarget.path("allexecutors") else attemptTarget.path("executors")
     try {
       get(target, SparkRestObjectMapper.readValue[Seq[ExecutorSummaryImpl]])
     } catch {
@@ -283,6 +285,7 @@ class SparkRestClient(sparkConf: SparkConf) {
 
 object SparkRestClient {
   val HISTORY_SERVER_ADDRESS_KEY = "spark.yarn.historyServer.address"
+  val DYNAMIC_ALLOCATION_ENABLED_KEY = "spark.dynamicAllocation.enabled"
   val API_V1_MOUNT_PATH = "api/v1"
   val IN_PROGRESS = ".inprogress"
   val DEFAULT_TIMEOUT = Duration(5, SECONDS);

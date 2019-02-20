@@ -20,9 +20,12 @@ import com.linkedin.drelephant.analysis.{HadoopAggregatedData, HadoopApplication
 import com.linkedin.drelephant.configurations.aggregator.AggregatorConfigurationData
 import com.linkedin.drelephant.math.Statistics
 import com.linkedin.drelephant.spark.data.{SparkApplicationData, SparkLogDerivedData, SparkRestDerivedData}
+import com.linkedin.drelephant.spark.fetchers.SparkRestClient
+import com.linkedin.drelephant.spark.fetchers.statusapiv1.ExecutorSummary
 import com.linkedin.drelephant.util.MemoryFormatUtils
 import org.apache.commons.io.FileUtils
 import org.apache.log4j.Logger
+
 import scala.util.Try
 
 
@@ -42,9 +45,17 @@ class SparkMetricsAggregator(private val aggregatorConfigurationData: Aggregator
   override def getResult(): HadoopAggregatedData = hadoopAggregatedData
 
   override def aggregate(data: HadoopApplicationData): Unit = data match {
-    case (data: SparkApplicationData) => aggregate(data)
+    case (data: SparkApplicationData) => _aggregate(data)
     case _ => throw new IllegalArgumentException("data should be SparkApplicationData")
   }
+
+  private def _aggregate(data: SparkApplicationData): Unit =
+    if (data.appConfigurationProperties.getOrElse(SparkRestClient.DYNAMIC_ALLOCATION_ENABLED_KEY,"false").toBoolean){
+      aggregateForDynamicAllocation(data)
+    } else {
+      aggregate(data)
+    }
+
 
   private def aggregate(data: SparkApplicationData): Unit = for {
     executorInstances <- executorInstancesOf(data)
@@ -83,6 +94,39 @@ class SparkMetricsAggregator(private val aggregatorConfigurationData: Aggregator
     }
   }
 
+  private def aggregateForDynamicAllocation(data: SparkApplicationData): Unit = {
+    val applicationDurationMillis = applicationDurationMillisOf(data)
+    if( applicationDurationMillis < 0) {
+      logger.warn(s"applicationDurationMillis is negative. Skipping Metrics Aggregation:${applicationDurationMillis}")
+    }  else {
+      val totalExecutorTaskTimeMillis = totalExecutorTaskTimeMillisOf(data)
+      val executorMemoryBytes = executorMemoryBytesOf(data).get
+      val resourcesAllocatedForUse =
+        aggregateDynamicResourcesAllocatedForUse(executorMemoryBytes, data.executorSummaries)
+      val resourcesActuallyUsed = aggregateDynamicResourcesAllocatedForActuallyUsed(executorMemoryBytes, data.executorSummaries)
+//
+      val resourcesActuallyUsedWithBuffer = resourcesActuallyUsed.doubleValue() * (1.0 + allocatedMemoryWasteBufferPercentage)
+      val resourcesWastedMBSeconds = (resourcesActuallyUsedWithBuffer < resourcesAllocatedForUse.doubleValue()) match {
+        case true => resourcesAllocatedForUse.doubleValue() - resourcesActuallyUsedWithBuffer
+        case false => 0.0
+      }
+      //allocated is the total used resource from the cluster.
+      if (resourcesAllocatedForUse.isValidLong) {
+        hadoopAggregatedData.setResourceUsed(resourcesAllocatedForUse.toLong)
+      } else {
+        logger.warn(s"resourcesAllocatedForUse/resourcesWasted exceeds Long.MaxValue")
+        logger.warn(s"ResourceUsed: ${resourcesAllocatedForUse}")
+        logger.warn(s"executorMemoryBytes:${executorMemoryBytes}")
+        logger.warn(s"applicationDurationMillis:${applicationDurationMillis}")
+        logger.warn(s"totalExecutorTaskTimeMillis:${totalExecutorTaskTimeMillis}")
+        logger.warn(s"resourcesActuallyUsedWithBuffer:${resourcesActuallyUsedWithBuffer}")
+        logger.warn(s"resourcesWastedMBSeconds:${resourcesWastedMBSeconds}")
+        logger.warn(s"allocatedMemoryWasteBufferPercentage:${allocatedMemoryWasteBufferPercentage}")
+      }
+      hadoopAggregatedData.setResourceWasted(resourcesWastedMBSeconds.toLong)
+    }
+  }
+
   private def aggregateresourcesActuallyUsed(executorMemoryBytes: Long, totalExecutorTaskTimeMillis: BigInt): BigInt = {
     val bytesMillis = BigInt(executorMemoryBytes) * totalExecutorTaskTimeMillis
     (bytesMillis / (BigInt(FileUtils.ONE_MB) * BigInt(Statistics.SECOND_IN_MS)))
@@ -94,6 +138,29 @@ class SparkMetricsAggregator(private val aggregatorConfigurationData: Aggregator
     applicationDurationMillis: Long
   ): BigInt = {
     val bytesMillis = BigInt(executorInstances) * BigInt(executorMemoryBytes) * BigInt(applicationDurationMillis)
+    (bytesMillis / (BigInt(FileUtils.ONE_MB) * BigInt(Statistics.SECOND_IN_MS)))
+  }
+
+  def aggregateDynamicResourcesAllocatedForUse(
+    executorMemoryBytes: Long,
+    executorSummaries: Seq[ExecutorSummary]
+  ): BigInt = {
+    val bytesMillis = executorSummaries.map {
+      x =>
+        val y : BigInt = try {
+          BigInt(x.removeTime.getTime - x.addTime.getTime) * BigInt(executorMemoryBytes)
+        } catch {
+          case _:Exception => BigInt(x.totalDuration) * BigInt(executorMemoryBytes)
+        }
+        y
+    }.sum
+    (bytesMillis / (BigInt(FileUtils.ONE_MB) * BigInt(Statistics.SECOND_IN_MS)))
+  }
+  def aggregateDynamicResourcesAllocatedForActuallyUsed(
+    executorMemoryBytes: Long,
+    executorSummaries: Seq[ExecutorSummary]
+  ): BigInt = {
+    val bytesMillis = executorSummaries.map(x => BigInt(x.totalDuration) * BigInt(executorMemoryBytes)).sum
     (bytesMillis / (BigInt(FileUtils.ONE_MB) * BigInt(Statistics.SECOND_IN_MS)))
   }
 
