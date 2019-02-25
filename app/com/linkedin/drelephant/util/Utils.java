@@ -313,6 +313,20 @@ public final class Utils {
     return GBHoursString;
   }
 
+  public static String getVCoreInHours(long seconds){
+    if(seconds == 0){
+      return "0 Hours";
+    }
+    double hours = (double) seconds / Statistics.HOUR;
+    if ((long) (hours * 1000) == 0) {
+      return "0 Hours";
+    }
+    DecimalFormat df = new DecimalFormat("0.000");
+    String hoursStr = df.format(hours);
+    hoursStr = hoursStr + " Hours";
+    return hoursStr;
+  }
+
   /**
    * Find percentage of numerator of denominator
    * @param numerator The numerator

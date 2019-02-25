@@ -70,7 +70,8 @@ public class AnalyticJob {
   // Backfill timestamp for the app type.
   private long _backfillTs;
   private Priority _jobExecutionPriority = Priority.NORMAL;
-
+  private long _memorySeconds;
+  private long _vcoreSeconds;
   /**
    * Returns the application type
    * E.g., Mapreduce or Spark
@@ -294,6 +295,24 @@ public class AnalyticJob {
     return this;
   }
 
+  public long getMemorySeconds() {
+    return _memorySeconds;
+  }
+
+  public long getVcoreSeconds() {
+    return _vcoreSeconds;
+  }
+
+  public AnalyticJob setMemorySeconds(long memorySeconds) {
+    this._memorySeconds = memorySeconds;
+    return this;
+  }
+
+  public AnalyticJob setVcoreSeconds(long vcoreSeconds) {
+    this._vcoreSeconds = vcoreSeconds;
+    return this;
+  }
+
   /**
    * Returns the analysed AppResult that could be directly serialized into DB.
    *
@@ -353,6 +372,8 @@ public class AnalyticJob {
     result.resourceUsed = hadoopAggregatedData.getResourceUsed();
     result.totalDelay = hadoopAggregatedData.getTotalDelay();
     result.resourceWasted = hadoopAggregatedData.getResourceWasted();
+    result.memorySeconds = this._memorySeconds;
+    result.vcoreSeconds = this._vcoreSeconds;
 
     // Load App Heuristic information
     int jobScore = 0;
@@ -411,4 +432,5 @@ public class AnalyticJob {
   public boolean retry() {
     return (_retries++) < _RETRY_LIMIT;
   }
+
 }

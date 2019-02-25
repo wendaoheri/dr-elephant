@@ -17,6 +17,7 @@
 package com.linkedin.drelephant.analysis;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import com.linkedin.drelephant.ElephantContext;
 import com.linkedin.drelephant.math.Statistics;
 import controllers.MetricsController;
@@ -25,6 +26,7 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import models.AppResult;
+import models.AppSummary;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.authentication.client.AuthenticatedURL;
@@ -140,6 +142,7 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
   public List<AnalyticJob> fetchAnalyticJobs()
       throws IOException, AuthenticationException {
     List<AnalyticJob> appList = new ArrayList<AnalyticJob>();
+    List<AppSummary> summaries = new ArrayList<AppSummary>();
 
     // There is a lag of job data from AM/NM to JobHistoryServer HDFS, we shouldn't use the current time, since there
     // might be new jobs arriving after we fetch jobs. We provide one minute delay to address this lag.
@@ -156,6 +159,7 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
     logger.info("The succeeded apps URL is " + succeededAppsURL);
     List<AnalyticJob> succeededApps = readApps(succeededAppsURL);
     appList.addAll(succeededApps);
+    summaries.addAll(readAppSummary(succeededAppsURL));
 
     // Fetch all failed apps
     // state: Application Master State
@@ -166,6 +170,7 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
     List<AnalyticJob> failedApps = readApps(failedAppsURL);
     logger.info("The failed apps URL is " + failedAppsURL);
     appList.addAll(failedApps);
+    summaries.addAll(readAppSummary(failedAppsURL));
 
     // Append promises from the retry queue at the end of the list
     while (!_firstRetryQueue.isEmpty()) {
@@ -177,6 +182,12 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
     fetchJobsFromSecondRetryQueue(appList);
 
     _lastTime = _currentTime;
+
+    for(AppSummary as : summaries){
+      as.save();
+      logger.info("saved app summary : " + as.getId());
+    }
+
     return appList;
   }
 
@@ -264,7 +275,8 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
         String trackingUrl = app.get("trackingUrl") != null ? app.get("trackingUrl").getValueAsText() : null;
         long startTime = app.get("startedTime").getLongValue();
         long finishTime = app.get("finishedTime").getLongValue();
-
+        long memorySeconds = app.get("memorySeconds").getLongValue();
+        long vcoreSeconds = app.get("vcoreSeconds").getLongValue();
         ApplicationType type =
             ElephantContext.instance().getApplicationTypeForName(app.get("applicationType").getValueAsText());
 
@@ -272,12 +284,27 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
         if (type != null) {
           AnalyticJob analyticJob = new AnalyticJob();
           analyticJob.setAppId(appId).setAppType(type).setUser(user).setName(name).setQueueName(queueName)
-              .setTrackingUrl(trackingUrl).setStartTime(startTime).setFinishTime(finishTime);
+              .setTrackingUrl(trackingUrl).setStartTime(startTime).setFinishTime(finishTime)
+              .setMemorySeconds(memorySeconds).setVcoreSeconds(vcoreSeconds);
 
           appList.add(analyticJob);
         }
       }
     }
     return appList;
+  }
+
+  private List<AppSummary> readAppSummary(URL url) throws IOException, AuthenticationException {
+
+    JsonNode rootNode = readJsonNode(url);
+    JsonNode apps = rootNode.path("apps").path("app");
+
+    ObjectMapper mapper = new ObjectMapper();
+    List<AppSummary> summaries = Lists.newArrayList();
+    for(JsonNode app:apps){
+      AppSummary as = mapper.readValue(app, AppSummary.class);
+      summaries.add(as);
+    }
+    return summaries;
   }
 }

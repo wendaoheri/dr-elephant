@@ -83,6 +83,8 @@ public class AppResult extends Model {
     public static final String WASTED_RESOURCES = "resourceWasted";
     public static final String TOTAL_DELAY = "totalDelay";
     public static final String RUN_TIME = "runtime";
+    public static final String MEMORY_SECONDS = "memorySeconds";
+    public static final String VCORE_SECONDS = "vcoreSeconds";
   }
 
   public static String getSearchFields() {
@@ -100,6 +102,8 @@ public class AppResult extends Model {
       sortFields.put(TABLE.FINISH_TIME,"FinishTime");
       sortFields.put(TABLE.RUN_TIME,"RunTime");
       sortFields.put(TABLE.RESOURCE_USAGE,"ResourceUsed");
+      sortFields.put(TABLE.MEMORY_SECONDS,"MemorySeconds");
+      sortFields.put(TABLE.VCORE_SECONDS,"VCoreSeconds");
     }
     return sortFields;
   }
@@ -176,6 +180,12 @@ public class AppResult extends Model {
 
   @Column(nullable = true)
   public long totalDelay;
+
+  @Column(nullable = true)
+  public long memorySeconds;
+
+  @Column(nullable = true)
+  public long vcoreSeconds;
 
   @Transient
   @Formula(select = "finish_time - start_time")
