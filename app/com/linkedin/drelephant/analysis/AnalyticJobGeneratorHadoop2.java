@@ -172,6 +172,10 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
     appList.addAll(failedApps);
     summaries.addAll(readAppSummary(failedAppsURL));
 
+    URL killedAppsURL = new URL(new URL("http://" + _resourceManagerAddress), String.format(
+        "/ws/v1/cluster/apps?finalStatus=KILLED&state=FINISHED&finishedTimeBegin=%s&finishedTimeEnd=%s",
+        String.valueOf(_lastTime + 1), String.valueOf(_currentTime)));
+    summaries.addAll(readAppSummary(killedAppsURL));
     // Append promises from the retry queue at the end of the list
     while (!_firstRetryQueue.isEmpty()) {
       appList.add(_firstRetryQueue.poll());

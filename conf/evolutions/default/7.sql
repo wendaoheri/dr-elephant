@@ -10,7 +10,7 @@ CREATE TABLE yarn_app_summary (
     tracking_url VARCHAR(255),
     diagnostics VARCHAR(100),
     cluster_id BIGINT,
-    application_Type VARCHAR(20),
+    application_type VARCHAR(20),
     application_tags VARCHAR(100),
     started_time BIGINT,
     finished_time BIGINT,
